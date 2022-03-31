@@ -14,8 +14,6 @@ type Client struct {
 	address    net.Addr
 	connection net.Conn
 	middlemane chan<- Command
-	Online     chan<- *Client
-	offline    chan<- *Client
 }
 
 /* Funcion
@@ -46,13 +44,13 @@ func (client *Client) RequestReadHandle() {
 	for { // Ciclo para estar escuchando las solicitudes del cliente hasta que el rompa la conexion
 
 		request, err := bufio.NewReader(connection).ReadBytes('\n') // buffer para leer las solicitudes entrantes del cliente. lector de solicitudes
-		log.Println("Request: ", string(request))
+		//log.Println("Request: ", string(request))
 
 		if err != nil { //Manejamos un posible error en la solicitud
 			if err == io.EOF { //si el error es end-of-line (EOF) en el lector de solicitudes desconectamos el cliente
-				client.offline <- client
+				// Aqui se debe desconectar al usuario
 			}
-			client.writeError(err)
+			log.Println(err)
 			break
 		}
 
@@ -71,7 +69,7 @@ func (client *Client) requestHandler(request []byte) {
 	args := bytes.TrimSpace(bytes.TrimPrefix(request, cmd))                     // Los argumentos (args) corresponderan al corte de la solicitud (request) menos el comando (cmd)
 
 	if string(cmd) == "" { // Manejamos que el comando no sea vacio
-		client.WriteResponse("FALSE")
+		//client.WriteResponse("FALSE")
 
 	} else {
 
@@ -113,7 +111,7 @@ func (client *Client) requestHandler(request []byte) {
 			}
 
 		default: //Si el comando no es reconocido en las posibilidades
-			client.WriteResponse("FALSE") //Informamos que es invalido
+			//client.WriteResponse("FALSE") //Informamos que es invalido
 		}
 	}
 }
@@ -282,7 +280,6 @@ func (client *Client) WriteResponse(res string) {
 		client.writeError(err)
 		return
 	}
-	log.Println(res)
 }
 
 /* Funcion
@@ -292,7 +289,7 @@ func (client *Client) WriteResponse(res string) {
 func (client *Client) writeError(e error) {
 
 	if _, err := client.connection.Write([]byte("ERROR " + e.Error() + "\n")); err != nil {
-		client.writeError(err)
+		log.Println(err)
 		return
 	}
 	log.Println(e)

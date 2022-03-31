@@ -10,8 +10,10 @@ type Server struct {
 	clients          map[net.Addr]*Client // Mapa de clientes en el servidor
 	channels         map[string]*Channel  // Canales del servidor
 	commands         chan Command         // Comando para ser analizado, es modificado por cada solicitud
+	ReqAndRes        string               // Solicitudes y respuestas de el servidor
 	ClientOnlineReq  chan *Client
 	clientOfflineReq chan *Client
+	ServerOn         bool // Define si el servidor esta apagado o encendido
 }
 
 /* Funcion
@@ -23,16 +25,21 @@ func NewServer() *Server {
 		clients:          make(map[net.Addr]*Client),
 		channels:         make(map[string]*Channel),
 		commands:         make(chan Command),
+		ReqAndRes:        "",
 		ClientOnlineReq:  make(chan *Client),
 		clientOfflineReq: make(chan *Client),
+		ServerOn:         false,
 	}
 }
+
+var ServerOn = true
 
 /* Funcion
  * Nombre: Run
  * Descripcion: Ejecutara el comando que es asignado por la solicitud del cliente */
 func (server *Server) Run() {
-	for {
+
+	for server.ServerOn { // Mientras el servidor este prendido
 
 		select {
 
@@ -109,6 +116,7 @@ func (server *Server) joinChannel(sender net.Addr, channelName string) {
 		if channel, ok := server.channels[channelName]; ok { // Manejamos que el canal a conectar exista
 
 			channel.clients[client] = true // Conectamos al cliente
+			server.WriteResponse("JOIN "+channelName, "CLIENT JOINED SUCCESSFULLY")
 		}
 	}
 }
@@ -124,6 +132,7 @@ func (server *Server) leaveChannel(sender net.Addr, channelName string) {
 		if channel, ok := server.channels[channelName]; ok { // Manejamos que el canal a salir exista
 
 			channel.clients[client] = true // Desconectamos al cliente
+			server.WriteResponse("LEAVE "+channelName, "CLIENT LEFT SUCCESSFULLY")
 		}
 	}
 }
@@ -140,6 +149,7 @@ func (server *Server) sendMessage(senderAddress net.Addr, channelName string, me
 		if channel, ok := server.channels[channelName]; ok { // Manejamos que el canal destinatario exista
 
 			channel.messages[string(message)] = NewMessage(senderAddress, message, file)
+			server.WriteResponse("MSG "+senderAddress.String()+" "+channelName+" "+string(message)+" "+string(file), "MESSAGE RECEIVED")
 		}
 	}
 }
@@ -155,14 +165,14 @@ func (server *Server) createChannel(sender net.Addr, channelName string) {
 		if _, ok := server.channels[channelName]; ok { // Manejamos que el canal a crear no exista
 
 			client.WriteResponse("FALSE")
+			server.WriteResponse("CREATE "+channelName, "CHANNEL ALREADY EXISTS")
 
 		} else {
 
 			server.channels[channelName] = NewChannel(channelName) // Creamos el canal en el servidor
-			server.listChannels(client.address)
+			server.WriteResponse("CREATE "+channelName, "CHANNEL CREATED")
 		}
 	}
-
 }
 
 /* Funcion: listChannels
@@ -193,6 +203,7 @@ func (server *Server) listChannels(sender net.Addr) {
 				response = response + key + ";"
 			}
 
+			server.WriteResponse("LIST_CHN", response)
 			client.WriteResponse(response)
 
 		}
@@ -230,6 +241,7 @@ func (server *Server) listMessages(sender net.Addr, channelName string) {
 					response = response + key + ";"
 				}
 
+				server.WriteResponse("LIST_MSG "+channelName, response)
 				client.WriteResponse(response)
 
 			}
@@ -268,9 +280,21 @@ func (server *Server) listUsrChannel(sender net.Addr, channelName string) {
 					response = response + key + ";"
 				}
 
+				server.WriteResponse("LIST_USR "+channelName, response)
 				client.WriteResponse(response)
 
 			}
 		}
 	}
+}
+
+/* Funcion
+ * Nombre: WriteResponse
+ * Descripcion: Escribe a la conexion del cliente la respuesta del servidor
+ * @res: respuesta dada */
+func (server *Server) WriteResponse(req, res string) {
+
+	server.ReqAndRes = "Request: " + req + " | Response: " + res
+	//cmd := server.ReqAndRes
+	//log.Println(cmd)
 }

@@ -1,0 +1,25 @@
+body {
+    background-color: #333;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+}
+
+#console {
+    height: 5em;
+    line-height: 1em;
+    color: #99ff00;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    border: 1px solid;
+    font-family: Courier;
+    background-color: #000000;
+    bottom: 20;
+    display: block;
+    float: left;
+    width: 100vw;
+    height: 70vh;
+    border-color: #000000;
+}
